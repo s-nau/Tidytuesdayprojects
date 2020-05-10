@@ -1,0 +1,126 @@
+---
+title: "Tidy tueday analysis"
+output: html_notebook
+---
+
+thank you to liza bolton on running the tidy tuesday tutorial through the u of t IssC, some of the code below belonged to her. 
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(tidytext)
+```
+
+
+```{r}
+critic <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-05/critic.tsv')
+user_reviews <- readr::read_tsv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-05/user_reviews.tsv')
+items <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-05/items.csv')
+villagers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-05/villagers.csv')
+```
+```{r}
+villagers %>%
+group_by(personality, gender) %>%
+summarise(n = n()) %>%
+arrange(desc(n))
+```
+
+```{r}
+villagers %>%
+group_by(personality, gender) %>%
+ggplot(aes(x = personality, fill = gender)) +
+facet_wrap(~gender, scales = "free_x") + #great function for splitting out plots on a categorical variable
+geom_bar() +
+theme_bw() #change the look of a plot really quickly with different theme options
+```
+```{r}
+critic %>%
+ggplot(aes(x = date, y = grade)) +
+geom_point() +
+geom_smooth(method = "lm") +
+theme_minimal() +
+ggtitle("Do we believe review scores decrease slightly over time, or is this just noise?") +
+xlab("Date review published") +
+ylab("Score of game based on review")
+```
+```{r}
+summary(lm(grade ~ date, data = critic))
+```
+```{r}
+critic_restricted <- critic %>%
+  filter(date < "2020-04-16")
+critic_restricted %>%
+  ggplot(aes(x = date, y = grade)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+```{r}
+summary(lm(grade ~ date, data = critic_restricted))
+```
+```{r}
+bing <- get_sentiments("bing")
+```
+
+
+```{r}
+critic %>%
+select(text) %>%
+unnest_tokens(word, text) %>%
+#group_by(word) %>%
+#summarise(count = n()) %>%
+left_join(bing, by="word") %>%
+filter(!is.na(sentiment)) %>%
+group_by(word, sentiment) %>%
+summarise(count = n()) %>%
+filter(count>1) %>% # filter to words appearing more than once (and a sentiment score)
+arrange(desc(count)) %>%
+group_by(sentiment) %>%
+filter(count > max(count) - 5) %>% # get the top couple words of each sentiment
+ggplot(aes(x = word, y = count, fill = sentiment)) +
+geom_bar(stat = "identity") + #to just use the count var for the height of the bars
+coord_flip() +
+facet_wrap(~sentiment, nrow = 2, scales = "free_y") + # this drops the unused levels
+theme_minimal() +
+ggtitle("Most common positive and negative words in Animal Crossing reviews",
+subtitle = "Words are taken out of context, some of these sentiments are not
+appropriate for\nunderstanding a game review")
+```
+
+```{r}
+user_reviews %>% ggplot(aes(x = date, y = grade)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) 
+
+
+```
+
+```{r}
+summary(lm(grade ~ date, data = user_reviews))$coefficients
+```
+
+```{r}
+items %>% filter(sell_value > buy_value) %>% group_by(name) %>% summarise()
+
+```
+these are the itemse that have a higher sell value than a buy value, that you can make money off of by selling
+```{r}
+items %>% filter(!is.na(orderable), !is.na(buy_value)) %>% group_by(orderable)%>%summarise(mean = mean(buy_value),                                                                                        median = median(buy_value),
+                                                                                           standard_deviation = sd(buy_value))
+
+
+```
+the average buy value of things that are orderable are more 
+```{r}
+items %>% filter(!is.na(orderable), !is.na(buy_value), buy_value < 5000) %>%  ggplot(aes(x = buy_value)) + geom_histogram(bins = 30) + facet_wrap(~orderable)
+```
+the distribution of the orderable is focused at around 1000 currencys for prices below 5000, while the prices for non-orderable are much more unevenly distributed
+
+```{r}
+items %>% 
+  filter(!is.na(buy_value), buy_value < 5000) %>%
+  ggplot(aes(x = buy_value)) +
+  geom_histogram() +
+  facet_wrap(~category) 
+  
+```
+
