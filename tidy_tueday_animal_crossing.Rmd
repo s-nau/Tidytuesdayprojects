@@ -1,6 +1,8 @@
 ---
 title: "Tidy tueday analysis"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 thank you to liza bolton on running the tidy tuesday tutorial through the u of t IssC, some of the code below belonged to her. 
@@ -123,4 +125,31 @@ items %>%
   facet_wrap(~category) 
   
 ```
+```{r}
+bing2 <- get_sentiments("bing")
+```
+```{r}
+user_reviews %>%
+select(text) %>%
+unnest_tokens(word, text) %>%
+#group_by(word) %>%
+#summarise(count = n()) %>%
+left_join(bing2, by="word") %>%
+filter(!is.na(sentiment)) %>%
+group_by(word, sentiment) %>%
+summarise(count = n()) %>%
+filter(count>1) %>% # filter to words appearing more than once (and a sentiment score)
+arrange(desc(count)) %>%
+group_by(sentiment) %>%
+filter(word != "like", word != "bad", count > 150) %>% # get the top couple words of each sentiment
+ggplot(aes(x = word, y = count, fill = sentiment)) +
+geom_bar(stat = "identity") + #to just use the count var for the height of the bars
+coord_flip() +
+facet_wrap(~sentiment, nrow = 2, scales = "free_y") + # this drops the unused levels
+theme_minimal() +
+ggtitle("Most common positive and negative words in Animal Crossing user reviews",
+subtitle = "Words are taken out of context, some of these sentiments are not
+appropriate for\nunderstanding a game review")
+```
+
 
