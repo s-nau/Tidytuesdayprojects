@@ -10,6 +10,11 @@ thank you to liza bolton on running the tidy tuesday tutorial through the u of t
 library(ggplot2)
 library(tidyverse)
 library(tidytext)
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+library(ggwordcloud)
 ```
 
 
@@ -89,7 +94,9 @@ appropriate for\nunderstanding a game review")
 ```
 
 ```{r}
-user_reviews %>% ggplot(aes(x = date, y = grade)) +
+df <- user_reviews %>% group_by(date) %>% summarise(grade = mean(grade))
+df %>%  
+  ggplot(aes(x = date, y = grade)) +
   geom_point() + 
   geom_smooth(method = "lm", se = FALSE) 
 
@@ -97,7 +104,7 @@ user_reviews %>% ggplot(aes(x = date, y = grade)) +
 ```
 
 ```{r}
-summary(lm(grade ~ date, data = user_reviews))$coefficients
+summary(lm(grade ~ date, data = df))$coefficients
 ```
 
 ```{r}
@@ -129,7 +136,7 @@ items %>%
 bing2 <- get_sentiments("bing")
 ```
 ```{r}
-user_reviews %>%
+ user_reviews %>%
 select(text) %>%
 unnest_tokens(word, text) %>%
 #group_by(word) %>%
@@ -140,16 +147,21 @@ group_by(word, sentiment) %>%
 summarise(count = n()) %>%
 filter(count>1) %>% # filter to words appearing more than once (and a sentiment score)
 arrange(desc(count)) %>%
-group_by(sentiment) %>%
-filter(word != "like", word != "bad", count > 150) %>% # get the top couple words of each sentiment
-ggplot(aes(x = word, y = count, fill = sentiment)) +
-geom_bar(stat = "identity") + #to just use the count var for the height of the bars
-coord_flip() +
-facet_wrap(~sentiment, nrow = 2, scales = "free_y") + # this drops the unused levels
-theme_minimal() +
-ggtitle("Most common positive and negative words in Animal Crossing user reviews",
-subtitle = "Words are taken out of context, some of these sentiments are not
-appropriate for\nunderstanding a game review")
+filter(word != "like", word != "bad", count > 150) %>%   # get the top couple words of each sentiment 
+  ggplot(aes(label = word, size = count)) + 
+  geom_text_wordcloud_area() + 
+  scale_size_area(max_size = 20) + 
+  theme_minimal() +
+  facet_wrap(~sentiment)
+# 
+# ggplot(aes(x = word, y = count, fill = sentiment)) +
+# geom_bar(stat = "identity") + #to just use the count var for the height of the bars
+# coord_flip() +
+# facet_wrap(~sentiment, nrow = 2, scales = "free_y") + # this drops the unused levels
+# theme_minimal() +
+# ggtitle("Most common positive and negative words in Animal Crossing user reviews",
+# subtitle = "Words are taken out of context, some of these sentiments are not
+# appropriate for\nunderstanding a game review")
 ```
 
 
