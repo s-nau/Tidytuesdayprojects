@@ -1,0 +1,104 @@
+---
+title: "volcano data"
+author: "shimmy"
+date: "5/11/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tidyverse)
+library(dplyr)
+library(png)
+library(grid)
+library(scales)
+library(forcats)
+library(mapview)
+library(sf)
+library(ggmap)
+library(lubridate)
+```
+
+```{r}
+# Get the Data
+
+volcano <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/volcano.csv')
+eruptions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/eruptions.csv')
+events <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/events.csv')
+tree_rings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/tree_rings.csv')
+sulfur <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/sulfur.csv')
+
+
+  
+```
+```{r}
+volcano_plus_eruptions <- volcano %>% 
+  left_join(by = "volcano_number", eruptions)  %>% 
+  filter(!is.na(start_year), !is.na(start_day), !is.na(end_day))%>% 
+  mutate(start_date = make_date(start_year, start_month, start_day),
+         end_date = make_date(end_year,end_month, end_day)) %>% 
+  filter(!is.na(start_date), 
+         !is.na(end_date))%>%
+  mutate(duration = end_date - start_date)
+
+
+```
+
+```{r}
+volcano %>% 
+  group_by(region) %>%
+  summarise(n = n())%>%
+  arrange(desc(n)) %>%
+ ggplot(aes(x = reorder(region, n), y = n)) + 
+  geom_bar(stat = "identity")   +
+  geom_text(aes(label = n), check_overlap = TRUE, nudge_y = 3) +
+  labs(title = "Number of volcanos by region") + 
+  xlab("Name of region") + 
+  ylab("number of volcanos")+ 
+  coord_flip() 
+```
+
+```{r}
+volcano %>% ggplot(aes(x = major_rock_1)) + geom_bar() + facet_wrap(~region
+                    ) + coord_flip() + theme_classic()
+```
+
+```{r}
+volcano %>% filter(last_eruption_year != "Unknown")%>% ggplot(aes(y = population_within_10_km, x= as.integer(last_eruption_year), color = region)) + geom_point()  + geom_smooth(method = lm, se = FALSE) +  scale_y_log10() + xlab("last eruption year")
+```
+
+```{r}
+volcano %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs =4326) %>% 
+  mapview(zcol = "last_eruption_year", legend = TRUE, cex = "population_within_10_km") 
+```
+```{r}
+volcano %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs =4326) %>% 
+  mapview(zcol = "major_rock_1") 
+```
+```{r}
+volcano %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs =4326) %>% 
+  mapview(zcol = "major_rock_2") 
+```
+
+```{r}
+volcano %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs =4326) %>% 
+  mapview(zcol = "major_rock_3") 
+```
+
+```{r}
+volcano_plus_eruptions %>% 
+  select(longitude.x, latitude.x, duration)%>% 
+  mutate(dur_2 = as.integer(duration))%>%
+  as_tibble() %>% 
+  st_as_sf(coords = c("longitude.x", "latitude.x"), crs =4326) %>%
+  mapview(zcol = "dur_2") 
+```
+
