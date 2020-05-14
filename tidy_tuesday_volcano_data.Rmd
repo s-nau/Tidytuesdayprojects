@@ -94,11 +94,20 @@ volcano %>%
 ```
 
 ```{r}
-volcano_plus_eruptions %>% 
-  select(longitude.x, latitude.x, duration)%>% 
+volcano_plus_eruptions %>%
+  select(longitude.x, latitude.x, duration, last_eruption_year)%>% 
   mutate(dur_2 = as.integer(duration))%>%
   as_tibble() %>% 
   st_as_sf(coords = c("longitude.x", "latitude.x"), crs =4326) %>%
-  mapview(zcol = "dur_2") 
+  mapview(zcol = "dur_2")
+```
+
+
+```{r}
+volcano_plus_eruptions %>% 
+  mutate(dur2 = as.integer(duration)) %>%
+  mutate(type = ifelse(dur2>365,"long","short")) %>%
+  group_by(type) %>%
+  summarise(n())
 ```
 
